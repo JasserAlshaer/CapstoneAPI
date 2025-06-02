@@ -96,6 +96,62 @@ namespace CapstoneAPI.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+        [HttpGet("load-search-items-count")]
+        public async Task<IActionResult> GetItemsCount(string? keyword, int? categoryId, double? price)
+        {
+            try
+            {
+                var count = await _context.Items
+                    .Where(item => item.IsActive == true &&
+                          (categoryId == null || item.CategoryId == categoryId) &&
+                          (keyword == null || EF.Functions.Like(item.Name.ToLower(), $"%{keyword.ToLower()}%")) &&
+                          (price == null || item.Price <= price))
+                    .CountAsync();
+
+                return Ok(count);
+            }
+            catch (FriendlyException ex)
+            {
+                return StatusCode(ex.ErrorCode, "\t" + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+        [HttpGet("load-search-items")]
+        public async Task<IActionResult> GetItems(string? keyword, int? categoryId, double? price, int pageSize = 10, int pageIndex = 1)
+        {
+            try
+            {
+                var query = _context.Items
+                    .Where(item => item.IsActive == true &&
+                          (categoryId == null || item.CategoryId == categoryId) &&
+                          (keyword == null || EF.Functions.Like(item.Name.ToLower(), $"%{keyword.ToLower()}%")) &&
+                          (price == null || item.Price <= price))
+                    .Select(item => new
+                    {
+                        Id = item.Id,
+                        Name = item.Name,
+                        Description = item.Description,
+                        Rate = item.Rate,
+                        Price = item.Price,
+                        Image = item.Image
+                    })
+                    .Skip(pageSize * (pageIndex - 1))
+                    .Take(pageSize);
+
+                return Ok(await query.ToListAsync());
+            }
+            catch (FriendlyException ex)
+            {
+                return StatusCode(ex.ErrorCode, "\t" + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
         [HttpGet("load-top-rated")]
         public async Task<IActionResult> GetTopRated(int? categoryId)
         {
